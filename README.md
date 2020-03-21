@@ -6,7 +6,7 @@ A new Flutter project.
 
 ### Clone Project
 ```
-git clone https://github.com/AgungPrabowo/startup_namer.git
+git clone https://github.com/AgungPrabowo/top_coder_map.git
 ```
 
 ### Get Packages
