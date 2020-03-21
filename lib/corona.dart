@@ -1,70 +1,82 @@
-import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'package:flag/flag.dart';
+import 'package:latlong/latlong.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong/latlong.dart';
-import 'package:top_coder_map/corona.dart';
+import 'package:top_coder_map/modelCorona.dart';
+import 'main.dart';
+import 'package:http/http.dart' as http;
 
-void main() => runApp(MyApp());
-
-class MyApp extends StatelessWidget {
+class Corona extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Map',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(title: 'Flutter Map'),
-    );
-  }
+  _CoronaState createState() => _CoronaState();
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-  final String title;
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  Stream<QuerySnapshot> _iceCreamStores;
+class _CoronaState extends State<Corona> {
+  Future<List<ModelCorona>> listCorona;
   final MapController _mapController = MapController();
+
+  Future<List<ModelCorona>> coronaData() async {
+    final client = http.Client();
+    try {
+      final response = await client
+          .get('https://coronavirus-tracker-api.herokuapp.com/v2/locations');
+      final result = json.decode(response.body);
+      List<ModelCorona> dataCorona = (result["locations"] as List)
+          .map((data) => ModelCorona.fromJson(data))
+          .toList();
+      return dataCorona;
+    } finally {
+      client.close();
+    }
+  }
 
   @override
   void initState() {
+    listCorona = coronaData();
     super.initState();
-    _iceCreamStores = Firestore.instance
-        .collection('ice_cream_stores')
-        .orderBy('name')
-        .snapshots();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text("Corona Virus Tracker"),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _iceCreamStores,
+      body: FutureBuilder<List<ModelCorona>>(
+        future: listCorona,
         builder: (context, snapshot) {
-          if (snapshot.hasError)
-            return Center(child: Text('Error: ${snapshot.error}}'));
-          if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
-
-          return Stack(
-            children: <Widget>[
-              StoreMap(
-                  documents: snapshot.data.documents,
-                  initialPosition: LatLng(-6.992149, 110.404104),
-                  mapController: _mapController),
-              StoreListTile(
-                  documents: snapshot.data.documents,
-                  mapController: _mapController),
-            ],
-          );
+          switch (snapshot.connectionState) {
+            case ConnectionState.none:
+              return Text("null");
+              break;
+            case ConnectionState.waiting:
+              return Container(
+                height: 200.0,
+                width: MediaQuery.of(context).size.width,
+                color: Colors.white,
+                alignment: Alignment.bottomCenter,
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+              break;
+            case ConnectionState.done:
+              return Stack(
+                children: <Widget>[
+                  CoronaMap(
+                      documents: snapshot.data,
+                      initialPosition: LatLng(-6.992149, 110.404104),
+                      mapController: _mapController),
+                  CoronaListTile(
+                      documents: snapshot.data, mapController: _mapController),
+                ],
+              );
+              break;
+            case ConnectionState.active:
+              return Text("");
+              break;
+          }
         },
       ),
       drawer: Drawer(
@@ -110,15 +122,15 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class StoreMap extends StatelessWidget {
-  StoreMap({
+class CoronaMap extends StatelessWidget {
+  CoronaMap({
     Key key,
     @required this.documents,
     @required this.initialPosition,
     @required this.mapController,
   }) : super(key: key);
 
-  final List<DocumentSnapshot> documents;
+  final List<ModelCorona> documents;
   final LatLng initialPosition;
   final MapController mapController;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -129,7 +141,7 @@ class StoreMap extends StatelessWidget {
       mapController: mapController,
       options: MapOptions(
         center: initialPosition,
-        zoom: 12,
+        zoom: 5,
       ),
       layers: [
         TileLayerOptions(
@@ -161,8 +173,8 @@ class StoreMap extends StatelessWidget {
                       ),
                     ),
                   ),
-                  point: LatLng(document['coordinates'].latitude,
-                      document['coordinates'].longitude),
+                  point: LatLng(double.parse(document.coordinate.latitude),
+                      double.parse(document.coordinate.longitude)),
                 ),
               )
               .toList(),
@@ -173,21 +185,21 @@ class StoreMap extends StatelessWidget {
   }
 }
 
-class StoreListTile extends StatefulWidget {
-  const StoreListTile({
+class CoronaListTile extends StatefulWidget {
+  const CoronaListTile({
     Key key,
     @required this.documents,
     @required this.mapController,
   }) : super(key: key);
 
-  final List<DocumentSnapshot> documents;
+  final List<ModelCorona> documents;
   final MapController mapController;
 
   @override
-  _StoreListTileState createState() => _StoreListTileState();
+  _CoronaListTileState createState() => _CoronaListTileState();
 }
 
-class _StoreListTileState extends State<StoreListTile>
+class _CoronaListTileState extends State<CoronaListTile>
     with TickerProviderStateMixin {
   void _animatedMapMove(LatLng destLocation, double destZoom) {
     print("object");
@@ -229,7 +241,7 @@ class _StoreListTileState extends State<StoreListTile>
       child: Padding(
         padding: const EdgeInsets.only(top: 10),
         child: SizedBox(
-          height: 90,
+          height: 100,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: widget.documents.length,
@@ -241,22 +253,22 @@ class _StoreListTileState extends State<StoreListTile>
                   child: Card(
                     child: Center(
                         child: ListTile(
-                      title: Text(widget.documents[index]['name']),
-                      subtitle: Text(widget.documents[index]['description']),
+                      title: Text(widget.documents[index].country),
+                      subtitle: Text(
+                        "Confirmed : ${widget.documents[index].latest.confirmed} \nDeaths : ${widget.documents[index].latest.deaths} \nRecovered : ${widget.documents[index].latest.recovered}",
+                      ),
+                      isThreeLine: true,
                       leading: Container(
-                        child: CircleAvatar(
-                          backgroundImage:
-                              NetworkImage(widget.documents[index]['image']),
-                        ),
-                        width: 60,
-                        height: 60,
+                        child: Flags.getMiniFlag(
+                            widget.documents[index].countryCode, 60, 60),
                       ),
                       onTap: () {
                         _animatedMapMove(
                             LatLng(
-                                widget.documents[index]['coordinates'].latitude,
-                                widget
-                                    .documents[index]['coordinates'].longitude),
+                                double.parse(widget
+                                    .documents[index].coordinate.latitude),
+                                double.parse(widget
+                                    .documents[index].coordinate.longitude)),
                             16);
                       },
                     )),
