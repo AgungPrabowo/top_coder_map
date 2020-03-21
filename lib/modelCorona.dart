@@ -13,7 +13,7 @@ class ModelCorona {
         id = map["id"],
         lastUpdated = map["last_updated"],
         latest = Latest.fromJson(map["latest"]),
-        province = map["province"];
+        province = map["province"] == "" ? "-" : map["province"];
 }
 
 class Coordinate {

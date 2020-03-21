@@ -190,7 +190,6 @@ class StoreListTile extends StatefulWidget {
 class _StoreListTileState extends State<StoreListTile>
     with TickerProviderStateMixin {
   void _animatedMapMove(LatLng destLocation, double destZoom) {
-    print("object");
     final _latTween = Tween<double>(
         begin: widget.mapController.center.latitude,
         end: destLocation.latitude);

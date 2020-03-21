@@ -135,6 +135,11 @@ class CoronaMap extends StatelessWidget {
   final MapController mapController;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  double computedRadius(int confirmed) {
+    double total = confirmed / 10;
+    return total > 100 ? 90 : total < 10 ? 10 : total;
+  }
+
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
@@ -157,8 +162,6 @@ class CoronaMap extends StatelessWidget {
           markers: documents
               .map(
                 (document) => Marker(
-                  width: 30,
-                  height: 40,
                   builder: (ctx) => Container(
                     child: GestureDetector(
                       onTap: () {
@@ -168,7 +171,7 @@ class CoronaMap extends StatelessWidget {
                       },
                       child: Icon(
                         Icons.location_on,
-                        size: 50.0,
+                        size: 20.0,
                         color: Colors.red[600],
                       ),
                     ),
@@ -179,7 +182,20 @@ class CoronaMap extends StatelessWidget {
               )
               .toList(),
         ),
-        PolylineLayerOptions(polylines: [])
+        CircleLayerOptions(
+          circles: documents
+              .map(
+                (document) => CircleMarker(
+                  point: LatLng(double.parse(document.coordinate.latitude),
+                      double.parse(document.coordinate.longitude)),
+                  color: Colors.red.withOpacity(0.3),
+                  borderStrokeWidth: 3.0,
+                  borderColor: Colors.transparent,
+                  radius: computedRadius(document.latest.confirmed),
+                ),
+              )
+              .toList(),
+        )
       ],
     );
   }
@@ -202,7 +218,6 @@ class CoronaListTile extends StatefulWidget {
 class _CoronaListTileState extends State<CoronaListTile>
     with TickerProviderStateMixin {
   void _animatedMapMove(LatLng destLocation, double destZoom) {
-    print("object");
     final _latTween = Tween<double>(
         begin: widget.mapController.center.latitude,
         end: destLocation.latitude);
@@ -255,7 +270,7 @@ class _CoronaListTileState extends State<CoronaListTile>
                         child: ListTile(
                       title: Text(widget.documents[index].country),
                       subtitle: Text(
-                        "Confirmed : ${widget.documents[index].latest.confirmed} \nDeaths : ${widget.documents[index].latest.deaths} \nRecovered : ${widget.documents[index].latest.recovered}",
+                        "Confirmed : ${widget.documents[index].latest.confirmed} \nDeaths : ${widget.documents[index].latest.deaths} \nRecovered : ${widget.documents[index].latest.recovered} \nProvince : ${widget.documents[index].province}",
                       ),
                       isThreeLine: true,
                       leading: Container(
@@ -269,7 +284,7 @@ class _CoronaListTileState extends State<CoronaListTile>
                                     .documents[index].coordinate.latitude),
                                 double.parse(widget
                                     .documents[index].coordinate.longitude)),
-                            16);
+                            8);
                       },
                     )),
                   ),
